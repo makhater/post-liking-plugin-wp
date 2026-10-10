@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Khater Post Liking
  * Plugin URI: https://github.com/makhater/post-liking-plugin-wp
- * Description: Logged-in WordPress users can like or dislike posts, with AJAX count updates and an admin activity table.
+ * Description: Logged-in WordPress users can like or dislike posts with AJAX count updates and an admin activity table.
  * Version: 1.1.0
  * Author: Mohammed Khater
  * Text Domain: mak-post-liking
@@ -15,22 +15,14 @@ if (!defined('ABSPATH')) {
 
 define('MAK_POST_LIKING_VERSION', '1.1.0');
 define('MAK_POST_LIKING_FILE', __FILE__);
-define('MAK_POST_LIKING_TABLE_SUFFIX', 'mak_postliking');
-
 require_once __DIR__ . '/post-like-db.php';
-
-function mak_post_liking_table_name() {
-    global $wpdb;
-    return $wpdb->prefix . MAK_POST_LIKING_TABLE_SUFFIX;
-}
 
 function mk_post_liking_activation() {
     global $wpdb;
-
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-    $table_name = mak_post_liking_table_name();
-    $charset_collate = $wpdb->get_charset_collate();
 
+    $table_name = $wpdb->prefix . 'mak_postliking';
+    $charset_collate = $wpdb->get_charset_collate();
     $sql = "CREATE TABLE {$table_name} (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         post_id bigint(20) unsigned NOT NULL,
@@ -51,7 +43,10 @@ function mak_post_liking_form_shortcode() {
     $post_id = get_the_ID();
     $user_id = get_current_user_id();
 
-    if (!$post_id || !is_singular() || !is_user_logged_in()) {
+    if (!$post_id || !is_singular()) {
+        return '';
+    }
+    if (!is_user_logged_in()) {
         return '<p class="unuser">' . esc_html__('Please log in to like or dislike this post.', 'mak-post-liking') . '</p>';
     }
 
@@ -66,7 +61,6 @@ function the_liking_form($post_id = 0) {
     if (!$post_id || !is_user_logged_in()) {
         return;
     }
-
     $user_id = get_current_user_id();
     include __DIR__ . '/liking-form.php';
 }
@@ -77,35 +71,30 @@ function mak_post_liking_ajax() {
     }
 
     check_ajax_referer('post-liking', 'nonce');
-
     $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
     $reaction = isset($_POST['btn']) ? sanitize_key(wp_unslash($_POST['btn'])) : '';
     $active = isset($_POST['btn_liking']) ? sanitize_text_field(wp_unslash($_POST['btn_liking'])) : '';
 
-    if (!$post_id || !get_post($post_id) || !is_string($reaction) || !in_array($reaction, ['like', 'dislike'], true) || !in_array($active, ['true', 'false'], true)) {
+    if (!$post_id || !get_post($post_id) || !in_array($reaction, ['like', 'dislike'], true) || !in_array($active, ['true', 'false'], true)) {
         wp_send_json_error(['message' => __('Invalid reaction request.', 'mak-post-liking')], 400);
     }
-
     if (!is_post_publicly_viewable(get_post($post_id))) {
         wp_send_json_error(['message' => __('This post is not available for reactions.', 'mak-post-liking')], 403);
     }
 
     $user_id = get_current_user_id();
     $like_type = ($reaction === 'like') ? 1 : 0;
-
-    if ($active === 'true') {
-        $saved = mak_upsert_post_reaction($post_id, $user_id, $like_type);
-    } else {
-        $saved = mak_delete_post_reaction($post_id, $user_id, $like_type);
-    }
+    $saved = ($active === 'true')
+        ? mak_upsert_post_reaction($post_id, $user_id, $like_type)
+        : mak_delete_post_reaction($post_id, $user_id, $like_type);
 
     if (!$saved) {
         wp_send_json_error(['message' => __('Could not save your reaction. Please try again.', 'mak-post-liking')], 500);
     }
 
     wp_send_json_success([
-        'post_like' => (int) get_post_like_count($post_id, 1),
-        'post_dislike' => (int) get_post_like_count($post_id, 0),
+        'post_like' => get_post_like_count($post_id, 1),
+        'post_dislike' => get_post_like_count($post_id, 0),
         'user_reaction' => mak_get_user_reaction($post_id, $user_id),
     ]);
 }
@@ -116,25 +105,11 @@ function mak_post_liking_enqueue_assets() {
         return;
     }
 
-    wp_enqueue_style(
-        'mak-post-liking-style',
-        plugins_url('assets/css/style.css', __FILE__),
-        [],
-        MAK_POST_LIKING_VERSION
-    );
-
-    wp_enqueue_script(
-        'mak-post-liking-script',
-        plugins_url('assets/js/ajax-script.js', __FILE__),
-        ['jquery'],
-        MAK_POST_LIKING_VERSION,
-        true
-    );
-
+    wp_enqueue_style('mak-post-liking-style', plugins_url('assets/css/style.css', __FILE__), [], MAK_POST_LIKING_VERSION);
+    wp_enqueue_script('mak-post-liking-script', plugins_url('assets/js/ajax-script.js', __FILE__), ['jquery'], MAK_POST_LIKING_VERSION, true);
     wp_localize_script('mak-post-liking-script', 'data_ajax', [
         'nonce' => wp_create_nonce('post-liking'),
         'ajax_url' => admin_url('admin-ajax.php'),
-        'login_required' => __('Please log in to react to this post.', 'mak-post-liking'),
         'error_message' => __('Something went wrong. Please try again.', 'mak-post-liking'),
     ]);
 }
@@ -157,11 +132,9 @@ function mak_post_liking_admin_page() {
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('You do not have permission to view this page.', 'mak-post-liking'));
     }
-
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
+    $table_name = $wpdb->prefix . 'mak_postliking';
     $rows = $wpdb->get_results("SELECT id, post_id, user_id, like_type, like_date FROM {$table_name} ORDER BY like_date DESC LIMIT 500");
-
     include __DIR__ . '/post-liking-admin-page.php';
 }
 
@@ -169,13 +142,12 @@ function mak_post_liking_delete_reaction() {
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('You do not have permission to perform this action.', 'mak-post-liking'));
     }
-
     $reaction_id = isset($_POST['reaction_id']) ? absint(wp_unslash($_POST['reaction_id'])) : 0;
     check_admin_referer('mak_delete_reaction_' . $reaction_id);
 
     if ($reaction_id) {
         global $wpdb;
-        $wpdb->delete(mak_post_liking_table_name(), ['id' => $reaction_id], ['%d']);
+        $wpdb->delete($wpdb->prefix . 'mak_postliking', ['id' => $reaction_id], ['%d']);
     }
 
     wp_safe_redirect(admin_url('admin.php?page=mak-post-liking&deleted=1'));
