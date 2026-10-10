@@ -1,37 +1,74 @@
 button {
     cursor: pointer;
     outline: 0;
-    color: #AAA;
+}
+
+.mak-plugin {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+}
+
+.mak-plugin h4 {
+    flex-basis: 100%;
+    margin: 0 0 4px;
 }
 
 .mak-plugin .btn {
-    color: #AAA;
+    color: #555;
+    border: 1px solid #d5dbe0;
+    background: #fff;
+    border-radius: 6px;
+    padding: 7px 12px;
+    transition: background-color .15s ease, border-color .15s ease;
 }
 
-.mak-plugin .btn:focus {
-    outline: none;
+.mak-plugin .btn:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+.mak-plugin .btn:disabled {
+    cursor: wait;
+    opacity: .65;
 }
 
 .mak-plugin .green {
-    color: green !important;
+    color: #16783a !important;
+    border-color: #8cc7a0;
+    background: #f0fbf3;
 }
 
 .mak-plugin .gray {
-    color: #AAA;
+    color: #555;
 }
 
-
 .mak-plugin .red {
-    color: red;
+    color: #b42318 !important;
+    border-color: #efb1ad;
+    background: #fff4f3;
 }
 
 .mak-plugin .like-count {
-    padding: 5px;
-    font-weight: 500;
+    padding: 0 4px;
+    font-weight: 600;
+}
 
+.mak-plugin .mak-reaction-label {
+    margin-left: 3px;
+}
+
+.mak-plugin .mak-post-liking-message {
+    flex-basis: 100%;
+    min-height: 1.2em;
+    margin: 0;
+    color: #5b6570;
+    font-size: .9rem;
 }
 
 .mak-plugin .unuser {
-    font-size:medium;
-    color: #AAA;
+    font-size: medium;
+    color: #666;
 }
