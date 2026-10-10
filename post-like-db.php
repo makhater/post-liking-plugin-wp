@@ -5,24 +5,21 @@ if (!defined('ABSPATH')) {
 
 function mak_get_user_reaction($post_id, $user_id) {
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
-
+    $table_name = $wpdb->prefix . 'mak_postliking';
     $reaction = $wpdb->get_var($wpdb->prepare(
         "SELECT like_type FROM {$table_name} WHERE post_id = %d AND user_id = %d ORDER BY id DESC LIMIT 1",
         absint($post_id),
         absint($user_id)
     ));
-
     if ($reaction === null) {
         return null;
     }
-
     return ((int) $reaction === 1) ? 'like' : 'dislike';
 }
 
 function mak_upsert_post_reaction($post_id, $user_id, $like_type) {
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
+    $table_name = $wpdb->prefix . 'mak_postliking';
     $post_id = absint($post_id);
     $user_id = absint($user_id);
     $like_type = (int) $like_type;
@@ -46,11 +43,9 @@ function mak_upsert_post_reaction($post_id, $user_id, $like_type) {
             ['%d', '%s'],
             ['%d']
         );
-
         foreach ($existing_ids as $duplicate_id) {
             $wpdb->delete($table_name, ['id' => absint($duplicate_id)], ['%d']);
         }
-
         return $updated !== false;
     }
 
@@ -68,24 +63,19 @@ function mak_upsert_post_reaction($post_id, $user_id, $like_type) {
 
 function mak_delete_post_reaction($post_id, $user_id, $like_type = null) {
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
     $where = ['post_id' => absint($post_id), 'user_id' => absint($user_id)];
-    $where_format = ['%d', '%d'];
-
+    $formats = ['%d', '%d'];
     if ($like_type !== null) {
         $where['like_type'] = (int) $like_type;
-        $where_format[] = '%d';
+        $formats[] = '%d';
     }
-
-    return $wpdb->delete($table_name, $where, $where_format) !== false;
+    return $wpdb->delete($wpdb->prefix . 'mak_postliking', $where, $formats) !== false;
 }
 
 function get_post_like_count($post_id, $type) {
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
-
     return (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$table_name} WHERE post_id = %d AND like_type = %d",
+        "SELECT COUNT(*) FROM {$wpdb->prefix}mak_postliking WHERE post_id = %d AND like_type = %d",
         absint($post_id),
         (int) $type
     ));
@@ -93,10 +83,8 @@ function get_post_like_count($post_id, $type) {
 
 function select_post_like_user($post_id, $user_id, $type) {
     global $wpdb;
-    $table_name = mak_post_liking_table_name();
-
     return $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$table_name} WHERE post_id = %d AND user_id = %d AND like_type = %d ORDER BY id DESC LIMIT 1",
+        "SELECT id FROM {$wpdb->prefix}mak_postliking WHERE post_id = %d AND user_id = %d AND like_type = %d ORDER BY id DESC LIMIT 1",
         absint($post_id),
         absint($user_id),
         (int) $type
