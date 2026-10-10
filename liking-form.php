@@ -1,53 +1,26 @@
-  <form id="liking-form" action="<?= admin_url('admin-post.php'); ?>" method="post">
-      <div class="mak-plugin" id="buttons-like">
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-
-          <h4>Like this post!</h4>
-          <input type="hidden" name="action" id="buttons-like" value="post-liking">
-          <input type="hidden" name="nonce" id="nonce" value="<?= wp_create_nonce("post-liking") ?>">
-          <input type="hidden" name="post_id" id="post_id" value="<?= $post_id; ?>">
-          <input type="hidden" name="user_id" id="user_id" value="<?= $user_id; ?>">
-
-
-
-          <?php if ($user_id != 0) {
-
-                if (get_post_like_count($post_id, 1) != 0) {
-                    $like_count = get_post_like_count($post_id, 1);
-                } else $like_count = '';
-
-                if (get_post_like_count($post_id, 0) != 0) {
-                    $dislike_count = get_post_like_count($post_id, 0);
-                } else $dislike_count = '';
-
-            ?>
-
-              <button class="btn likebtn <?php if (select_post_like_user($post_id, $user_id, 1) != null) {
-                                                echo 'green';
-                                            } ?>" id="btn_like" name="btn_liking" value="true" type="submit">
-                  <span class="like-count" id="like-count"><?= $like_count; ?></span>
-                  <i class="fa fa-thumbs-up fa-lg" aria-hidden="true"></i>
-                  <input type="hidden" name="like-count" id="buttons-like" value="true">
-              </button>
-
-              <button class="btn dislikebtn <?php if (select_post_like_user($post_id, $user_id, 0) != null) {
-                                                echo 'red';
-                                            } ?>" id="btn_dislike" name="btn_liking" value="true" type="submit">
-                  <i class="fa fa-thumbs-down fa-lg" aria-hidden="true"></i>
-                  <span class="like-count" id="dislike-count"><?= $dislike_count; ?></span>
-                  <input type="hidden" name="dislike-count" id="buttons-like" value="true">
-              </button>
-
-
-              <?php if (isset($_GET['success']) && $_GET['success'] == 'ok') : ?>
-                  <div class="success">
-                      <h5>Thank you for liking</h5>
-                  </div>
-              <?php endif ?>
-
-          <?php } else {
-                echo '<div class="unuser"> Please register or login to Like/Dislike this post!</div>';
-            } ?>
-
-      </div>
-  </form>
+$post_id = absint($post_id);
+$user_id = get_current_user_id();
+$like_count = get_post_like_count($post_id, 1);
+$dislike_count = get_post_like_count($post_id, 0);
+$user_reaction = mak_get_user_reaction($post_id, $user_id);
+?>
+<div class="mak-plugin" id="mak-post-liking-<?php echo esc_attr($post_id); ?>" data-post-id="<?php echo esc_attr($post_id); ?>">
+    <h4><?php esc_html_e('React to this post', 'mak-post-liking'); ?></h4>
+    <input type="hidden" class="mak-post-liking-nonce" value="<?php echo esc_attr(wp_create_nonce('post-liking')); ?>">
+    <button class="btn likebtn mak-reaction-button <?php echo $user_reaction === 'like' ? 'green' : 'gray'; ?>"
+            type="button" data-reaction="like" aria-pressed="<?php echo $user_reaction === 'like' ? 'true' : 'false'; ?>">
+        <span class="like-count mak-like-count"><?php echo esc_html(number_format_i18n($like_count)); ?></span>
+        <span class="mak-reaction-label"><?php esc_html_e('Like', 'mak-post-liking'); ?></span>
+    </button>
+    <button class="btn dislikebtn mak-reaction-button <?php echo $user_reaction === 'dislike' ? 'red' : 'gray'; ?>"
+            type="button" data-reaction="dislike" aria-pressed="<?php echo $user_reaction === 'dislike' ? 'true' : 'false'; ?>">
+        <span class="like-count mak-dislike-count"><?php echo esc_html(number_format_i18n($dislike_count)); ?></span>
+        <span class="mak-reaction-label"><?php esc_html_e('Dislike', 'mak-post-liking'); ?></span>
+    </button>
+    <p class="mak-post-liking-message" role="status" aria-live="polite"></p>
+</div>
