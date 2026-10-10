@@ -1,89 +1,60 @@
+(function ($) {
+    'use strict';
 
-(function ($) { 
+    $(document).on('click', '.mak-reaction-button', function () {
+        var $button = $(this);
+        var $container = $button.closest('.mak-plugin');
+        var $buttons = $container.find('.mak-reaction-button');
+        var $message = $container.find('.mak-post-liking-message');
+        var reaction = $button.data('reaction');
+        var currentlyActive = $button.attr('aria-pressed') === 'true';
+        var requestedState = currentlyActive ? 'false' : 'true';
 
- 
-    // like button
-    $('#btn_like').on('click', function (e) {
-      e.preventDefault();
-      
-      var data = {
-          
+        if (!window.data_ajax || !data_ajax.ajax_url || !data_ajax.nonce) {
+            $message.text('Unable to send the reaction right now.');
+            return;
+        }
+
+        $buttons.prop('disabled', true);
+        $message.text('');
+
+        $.ajax({
+            url: data_ajax.ajax_url,
+            method: 'POST',
+            dataType: 'json',
+            data: {
                 action: 'post-liking',
-                nonce: $('#nonce').val(),
-                post_id: $('#post_id').val(),
-                user_id: $('#user_id').val(),
-                btn_liking: $('#btn_like').val(),
-                btn:'like'
-            };
-    
+                nonce: $container.find('.mak-post-liking-nonce').val() || data_ajax.nonce,
+                post_id: $container.data('post-id'),
+                btn: reaction,
+                btn_liking: requestedState
+            }
+        }).done(function (response) {
+            if (!response || response.success !== true || !response.data) {
+                $message.text((response && response.data && response.data.message) || data_ajax.error_message || 'Could not save reaction.');
+                return;
+            }
 
-      
-        //  var data  = $('#liking-form').serialize();
-      var t = $('#btn_like');
-      var d = $('#btn_dislike');
+            $container.find('.mak-like-count').text(response.data.post_like);
+            $container.find('.mak-dislike-count').text(response.data.post_dislike);
 
-        // send data by url and recieve response
-        $.post(data_ajax.ajax_url, data, function (response) {
-          $('#like-count').html(`${response.post_like}`);
-          $('#dislike-count').html(`${response.post_dislike}`);
-          if (t.val() == "true") {
-            
-            t.val("false");
-            t.addClass('green').removeClass('gray');
-            d.addClass('gray').removeClass('red');
-                       
-          }
-          else if (t.val() == "false") {
-            t.val("true");
-            t.addClass('gray').removeClass('green');
-           
-                
-          }
-                
-          
-
+            $buttons.each(function () {
+                var $current = $(this);
+                var currentReaction = $current.data('reaction');
+                var isActive = response.data.user_reaction === currentReaction;
+                $current.attr('aria-pressed', isActive ? 'true' : 'false');
+                $current.toggleClass('green', currentReaction === 'like' && isActive);
+                $current.toggleClass('red', currentReaction === 'dislike' && isActive);
+                $current.toggleClass('gray', !isActive);
+            });
+        }).fail(function (xhr) {
+            var message = data_ajax.error_message || 'Something went wrong. Please try again.';
+            if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                message = xhr.responseJSON.data.message;
+            }
+            $message.text(message);
+        }).always(function () {
+            $buttons.prop('disabled', false);
         });
-
-    })
-
-    // dislike button
-      $('#btn_dislike').on('click', function (e) {
-        e.preventDefault();
-        var data = {
-                action: 'post-liking',
-                nonce: $('#nonce').val(),
-                post_id: $('#post_id').val(),
-                user_id: $('#user_id').val(),
-                btn_liking: $('#btn_dislike').val(),
-                btn:'dislike'
-            };
-         var d = $('#btn_dislike');
-          var t = $('#btn_like');
-          
-      // send data by url and recieve response
-        $.post(data_ajax.ajax_url, data, function (response) {
-      
-            $('#dislike-count').html(`${response.post_dislike}`);
-            $('#like-count').html(`${response.post_like}`);
-            if (d.val() == "true") {
-                        
-                        d.val("false");
-              d.addClass('red').removeClass('gray');
-               t.addClass('gray').removeClass('green');
-                       
-                    }
-                    else if( d.val()=="false"){
-                        d.val("true");
-                         d.addClass('gray').removeClass('red');
-                
-                    }
-                
-          
-
-        })
-      })
-    
+    });
 })(jQuery);
-
-
-
